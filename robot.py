@@ -34,9 +34,9 @@ class Robot(object):
 		self.take_second_step = False
 		self.second_step_instructions = None
 
-		self.mapper = self.init_maze_knowledge(maze_dim)
+		self.mapper = self.intiliase_maze_graph(maze_dim)
 		
-	def init_maze_knowledge(self, maze_dim):
+	def intiliase_maze_graph(self, maze_dim):
 		self.maze_dim = maze_dim
 
 		self.goal_location = None
@@ -50,10 +50,9 @@ class Robot(object):
 								 (dim - 1, dim / 2 - 1), (dim - 2, dim / 2 - 1),
 								 (dim - 2, dim / 2), (dim - 1, dim / 2 + 1)]
 
-	def explore(self):
+	def maze_first_explore(self):
 		'''
-		Decide the rotation and movement the robot should make in order to
-		maximise knowledge of the maze.
+		Exploration of the maze by deciding the rotation to do.
 		'''
 		if self.goal_location == self.location and not self.goal_visited:
 			self.goal_visited = True
@@ -112,11 +111,11 @@ class Robot(object):
 		# If the goal has been found, but not yet visited, go there instead.
 		if not self.goal_visited and self.goal_found():
 			target = self.goal_location
-		maze_graph = self.convert_maze_map_to_graph()
-		path = self.best_path_through_graph(maze_graph, loc, target)
+		maze_graph = self.build_graph_from_maze()
+		path = self.Dijkstra_best_path(maze_graph, loc, target)
 		steps = self.convert_path_to_steps(path, heading)
 
-		repeat_length = self.check_for_repeats_in_visited_nodes()
+		repeat_length = self.is_loop()
 		if repeat_length > 0:
 			self.take_additional_steps = True
 			self.additional_step_instructions = steps[1:repeat_length + 1]
@@ -130,9 +129,9 @@ class Robot(object):
 		rotation = steps[0]
 		return rotation
 
-	def check_for_repeats_in_visited_nodes(self):
+	def is_loop(self):
 		'''
-		Check to see if the Robot is stuck 'ping-ponging' between a set of nodes. This checks for repeated paths of lengths between 2 and 6. The robot is conidered to be in a stuck state if it follows a path, retraces its steps, and then follows the original path again. It is assumed that if this happens, the Robot would continue this pattern indefinitely.
+			Check to know whether the robot is doing loop between a set of nodes
 		'''
 		loop_lengths = range(2, 6)
 		robot_is_stuck = False
@@ -171,29 +170,19 @@ class Robot(object):
 					closest_peak = peak_locations[k]
 		return closest_peak
 
-	def convert_maze_map_to_graph(self, fastest_route = False, treat_unknown_as_walls = False):
+	def build_graph_from_maze(self, fastest_route = False, treat_unknown_as_walls = False):
 		'''
-		Convert the maze map to an undirected graph.
-		- If fastest_route, allow the path to include steps with maximum strides
-			even if this means moving past unvisited nodes.
-		- If treat_unknown_as_walls, prevent the path from passing between nodes
-			when the state of the wall / opening between them is unknown.
+			Creates an undirected graph from the maze.
 		'''
 		graph = {}
 		open_list = set([self.initial_location])
 
 		while len(open_list) > 0:
-			# Pop the next element of the open_list and set it as the current
-			# location.
 			location = open_list.pop()
-			# If the current location is a key in the graph, move to the next
-			# iteration.
 			if location in graph.keys():
 				next
 			else:
 				graph[location] = []
-			# From current location, add all valid movements from 1-3 in all
-			# four directions to the graph and the open_list.
 			
 			x, y = location
 			for direction in ['up', 'right', 'down', 'left']:
@@ -214,10 +203,6 @@ class Robot(object):
 						graph[location].append(target)
 						if target not in graph.keys():
 							open_list.add(target)
-						# Unless the path should include the fastest route,
-						# ensure that the graph does not allow skipping over
-						# unexplored nodes. This helps improve the efficacy
-						# of exploration.
 						if not fastest_route and self.cell_possibilities[tx][ty] > 1:
 							break
 					else:
@@ -269,9 +254,9 @@ class Robot(object):
 
 		return valid_move
 	
-	def best_path_through_graph(self, graph, start, target, print_path_costs = False):
+	def Dijkstra_best_path(self, graph, start, target, print_path_costs = False):
 		'''
-		Use Dijkstra's algorithm to find the fastest path from start to target
+		Dijkstra's algorithm to find the fastest path from start to target
 		through the given undirected graph.
 		'''
 		optimal_path = []
@@ -321,7 +306,7 @@ class Robot(object):
 					current_node = sorted(unvisited_list, key=cost_for_node)[0]
 
 			if print_path_costs:
-				print 'Path costs for each explored space within the maze:'
+				print 'Path costs for each maze_first_explored space within the maze:'
 				self.print_maze_consol((0,0), 'up', path_costs)
 
 			optimal_path.append(target)
@@ -430,19 +415,19 @@ class Robot(object):
 		if self.optimal_path != None:
 			return True
 
-		known_maze_graph = self.convert_maze_map_to_graph(True, True)
+		known_maze_graph = self.build_graph_from_maze(True, True)
 		if goal_location not in known_maze_graph.keys():
 			print "Goal not yet navigable!"
 			return False
 
-		open_maze_graph = self.convert_maze_map_to_graph(True, False)
+		open_maze_graph = self.build_graph_from_maze(True, False)
 
 		# Compare the best path through the maze assuming all unknown walls
 		# are walls vs all unknown walls are opennings. If the path lengths are
 		# the same, the optimal path has been found.
-		shortest_known_path = self.best_path_through_graph(known_maze_graph,
+		shortest_known_path = self.Dijkstra_best_path(known_maze_graph,
 											self.initial_location, goal_location)
-		shortest_possible_path = self.best_path_through_graph(open_maze_graph,
+		shortest_possible_path = self.Dijkstra_best_path(open_maze_graph,
 											self.initial_location, goal_location)
 		optimal_path_found = len(shortest_known_path) == len(shortest_possible_path)
 
@@ -453,13 +438,13 @@ class Robot(object):
 
 	def print_maze_with_path_costs(self):
 		'''
-		Print the explored map including the path costs for each explored cell.
+		Print the maze_first_explored map including the path costs for each maze_first_explored cell.
 		'''
 		if not self.goal_found():
 			print "Can not print maze with path costs. The goal has not been found."
 			return False
-		known_maze_graph = self.convert_maze_map_to_graph(True, True)
-		self.best_path_through_graph(known_maze_graph, self.initial_location,
+		known_maze_graph = self.build_graph_from_maze(True, True)
+		self.Dijkstra_best_path(known_maze_graph, self.initial_location,
 												self.goal_location, True)
 
 	# Navigation utility methods:
@@ -821,12 +806,10 @@ class Robot(object):
 
 		if self.goal_visited and self.found_optimal_path():
 			self.racing = True
-			self.print_maze_with_path_costs()
-			
 			#self.draw_solution_path(self.optimal_path)
 			print "Best number of steps: {}\nbest path{}".format(len(self.optimal_steps),self.optimal_path)
 			return 'Reset', 'Reset'
 
-		return self.explore()
+		return self.maze_first_explore()
 		
 		#return rotation, movement
