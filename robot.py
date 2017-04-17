@@ -1,9 +1,11 @@
+from __future__ import print_function
 import numpy as np
 import turtle
 import sys
 import math
 import copy
 import operator
+
 
 class Robot(object):
 	def __init__(self, maze_dim):
@@ -33,8 +35,11 @@ class Robot(object):
 		self.nodes_visited = [self.initial_location]
 		self.take_second_step = False
 		self.second_step_instructions = None
-
+		latest_maze = None
 		self.mapper = self.intiliase_maze_graph(maze_dim)
+
+	def gotoxy(self,x,y):
+		print ("%c[%d;%df" % (0x1B, y, x), end='')
 		
 	def intiliase_maze_graph(self, maze_dim):
 		self.maze_dim = maze_dim
@@ -60,9 +65,9 @@ class Robot(object):
 		step = self.calculate_next_step()
 		rotation, movement = step
 
-		print "sensors info={} \ncurrent_robot_location = {} \nheading={} \n(rotation,movement)={}\n".format(self.latest_sensor_reading,
-			self.location, self.heading, step)
-		self.print_maze_consol(self.location, self.heading)
+		print ('sensors info={} \ncurrent_robot_location = {} \nheading={} \n(rotation,movement)={}\n'.format(self.latest_sensor_reading,self.location, self.heading, step))
+		graphic_maze = self.print_maze_consol(self.location, self.heading)
+		#print (graphic_maze)
 
 		self.location = self.calculate_node(self.location, self.heading, step)
 		self.heading = self.calculate_heading(self.heading, rotation)
@@ -209,6 +214,7 @@ class Robot(object):
 						break
 
 		return graph
+			
 
 	def move_is_valid(self, location, target, treat_unknown_as_walls = False):
 		'''
@@ -306,8 +312,9 @@ class Robot(object):
 					current_node = sorted(unvisited_list, key=cost_for_node)[0]
 
 			if print_path_costs:
-				print 'Path costs for each maze_first_explored space within the maze:'
-				self.print_maze_consol((0,0), 'up', path_costs)
+				print ('Path costs for each maze_first_explored space within the maze:')
+				graphic_maze = self.print_maze_consol((0,0), 'up', path_costs)
+				print (graphic_maze)
 
 			optimal_path.append(target)
 			current_node = target
@@ -316,7 +323,7 @@ class Robot(object):
 			while start not in optimal_path:
 				current_node = sorted(graph[current_node], key=cost_for_node)[0]
 				optimal_path = [current_node] + optimal_path
-
+		
 		return optimal_path
 
 	def convert_path_to_steps(self, path, initial_heading):
@@ -417,7 +424,7 @@ class Robot(object):
 
 		known_maze_graph = self.build_graph_from_maze(True, True)
 		if goal_location not in known_maze_graph.keys():
-			print "Goal not yet navigable!"
+			print ("Goal not yet navigable!")
 			return False
 
 		open_maze_graph = self.build_graph_from_maze(True, False)
@@ -441,13 +448,15 @@ class Robot(object):
 		Print the maze_first_explored map including the path costs for each maze_first_explored cell.
 		'''
 		if not self.goal_found():
-			print "Can not print maze with path costs. The goal has not been found."
+			print ("Can not print maze with path costs. The goal has not been found.")
 			return False
 		known_maze_graph = self.build_graph_from_maze(True, True)
+		
+		new_graph = self.sort_graph(known_maze_graph)
+		#f = open('graph2.txt', 'a')
+		#print (f, new_graph)
 		self.Dijkstra_best_path(known_maze_graph, self.initial_location,
 												self.goal_location, True)
-
-	# Navigation utility methods:
 
 	def distance_between_nodes(self, a, b):
 		''' Return the distance between the two given nodes. '''
@@ -766,8 +775,50 @@ class Robot(object):
 		maze_drawing = ''
 		for row in maze_rows:
 			maze_drawing += row + "\n"
-		print maze_drawing	
+		self.latest_maze = maze_drawing
+		return maze_drawing
 
+	"""	
+	def sort_graph(self, graph):
+		graph_copy = graph
+		new_dict = []
+		for i in range(0,12) :
+			for j in range(0,12) :
+				location = (j,i)
+				if location in graph_copy.keys():
+					new_dict.append(graph_copy[location])
+					del graph_copy[location]
+		return new_dict
+
+	def draw_best_path(self,best_path):
+		graph = self.latest_maze
+		
+
+		depend = open("graph3.txt", "w")
+		print(graph, end="", file=depend)
+		depend.close()
+		
+
+		for i in range(12):
+			y = (12-i)*2-1
+			depend = open("graph3.txt", "r+")
+			line = depend.readlines()[y]
+			position = depend.tell()
+			print (line)
+			depend.close()
+
+			for j in range(12):
+				#depend.close()
+				depend = open("graph3.txt", "r+")
+				if (i,j) in best_path:
+					depend.seek(position,0)
+					depend.seek((j+1)*3, 1)
+					print("#", end="", file=depend)
+			depend.close()
+
+	"""
+
+			
 	def next_move(self, sensors):
 		'''
 		Use this function to determine the next move the robot should make,
@@ -806,10 +857,12 @@ class Robot(object):
 
 		if self.goal_visited and self.found_optimal_path():
 			self.racing = True
+			#self.print_maze_with_path_costs()
+			#self.draw_best_path(self.optimal_path)
 			#self.draw_solution_path(self.optimal_path)
-			print "Best number of steps: {}\nbest path{}".format(len(self.optimal_steps),self.optimal_path)
+			print ("Best number of steps: {}\nbest path{}".format(len(self.optimal_steps),self.optimal_path))
 			return 'Reset', 'Reset'
-
+		
 		return self.maze_first_explore()
 		
 		#return rotation, movement
