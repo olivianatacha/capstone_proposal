@@ -16,7 +16,7 @@ dir_reverse = {'u': 'd', 'r': 'l', 'd': 'u', 'l': 'r',
 # test and score parameters
 max_time = 1000
 train_score_mult = 1/30.
-def test(testmaze):
+def test(testmaze,file):
 	# Intitialize a robot; robot receives info about maze dimensions.
 	testrobot = Robot(testmaze.dim)
 
@@ -38,6 +38,9 @@ def test(testmaze):
 			if total_time > max_time:
 				run_active = False
 				print "Allotted time exceeded."
+				f = open('out.txt', 'a')
+				print >> f, file  # or f.write('...\n')
+				f.close()
 				break
 
 			# provide robot with sensor information, get actions
@@ -122,6 +125,6 @@ if __name__ == '__main__':
 		maze_list.append(file)
 	for file in maze_list :
 		testmaze = Maze( file )
-		test(testmaze)
+		test(testmaze,file)
 
     

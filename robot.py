@@ -10,10 +10,10 @@ import operator
 class Robot(object):
 	def __init__(self, maze_dim):
 		"""
-		Use the initialization function to set up attributes that your robot
-		will use to learn and navigate the maze. Some initial attributes are
-		provided based on common information, including the size of the maze
-		the robot is placed in.
+			Use the initialization function to set up attributes that your robot
+			will use to learn and navigate the maze. Some initial attributes are
+			provided based on common information, including the size of the maze
+			the robot is placed in.
 		"""
 
 		self.maze_dim = maze_dim
@@ -55,62 +55,62 @@ class Robot(object):
 								 (dim - 1, dim / 2 - 1), (dim - 2, dim / 2 - 1),
 								 (dim - 2, dim / 2), (dim - 1, dim / 2 + 1)]
 
-	def maze_first_explore(self):
+	def explore_the_maze(self):
 		'''
 		Exploration of the maze by deciding the rotation to do.
 		'''
 		if self.goal_location == self.location and not self.goal_visited:
 			self.goal_visited = True
 
-		step = self.calculate_next_step()
-		rotation, movement = step
-
-		print ('sensors info={} \ncurrent_robot_location = {} \nheading={} \n(rotation,movement)={}\n'.format(self.latest_sensor_reading,self.location, self.heading, step))
-		graphic_maze = self.print_maze_consol(self.location, self.heading)
-		#print (graphic_maze)
-
-		self.location = self.calculate_node(self.location, self.heading, step)
-		self.heading = self.calculate_heading(self.heading, rotation)
-
-		self.nodes_visited.append(self.location)
-
-		return rotation, movement
-
-	def calculate_next_step(self):
-		'''
-		In order to improve the efficiency of the Robot's traversal of the maze
-		and to avoid the Robot getting stuck 'ping-ponging' between two nodes
-		indefinitely, the Navigator will attempt to follow the first two steps
-		of each calculated path through the maze. The only cases when this isn't
-		done is when the path has only one step or when the second step becomes
-		invalid as a result of the sensor reaidngs following the first step.
-
-		When attempting to calculate a new path, the target node is either the
-		closest node with the greatest uncertainty or the goal node if its
-		location is known, but has not yet been visited.
-		'''
+		#step = self.calculate_next_step()
+		
 		loc = self.location
 		heading = self.heading
 
 		if self.take_additional_steps:
-			next_step = self.additional_step_instructions.pop()
-			next_node = self.calculate_node(loc, heading, next_step)
-			if next_node != None and self.move_is_valid(loc, next_node):
-				self.take_additional_steps = len(self.additional_step_instructions) > 0
-				return next_step
-			else:
-				self.take_additional_steps = False
+			if len(self.additional_step_instructions) > 0:
+				next_step = self.additional_step_instructions.pop()
+				next_node = self.calculate_node(loc, heading, next_step)
+				if next_node != None and self.move_is_valid(loc, next_node):
+					self.take_additional_steps = len(self.additional_step_instructions) > 0
+					
+					rotation, movement = step = next_step
+
+					print ('sensors info={} \ncurrent_robot_location = {} \nheading={} \n(rotation,movement)={}\n'.format(self.latest_sensor_reading,self.location, self.heading, step))
+					graphic_maze = self.print_maze_consol(self.location, self.heading)
+					#print (graphic_maze)
+
+					self.location = self.calculate_node(self.location, self.heading, step)
+					self.heading = self.calculate_heading(self.heading, rotation)
+
+					self.nodes_visited.append(self.location)
+
+					return rotation, movement
+				else:
+					self.take_additional_steps = False
 
 		second_step_node = None
 		second_step = self.second_step_instructions
-
+		
 		if self.take_second_step and second_step != None:
 			second_step_node = self.calculate_node(loc, heading, second_step)
 
 		if second_step_node != None and self.move_is_valid(loc, second_step_node):
 			self.take_second_step = False
-			return second_step
+			
+			rotation, movement = step = second_step
 
+			print ('sensors info={} \ncurrent_robot_location = {} \nheading={} \n(rotation,movement)={}\n'.format(self.latest_sensor_reading,self.location, self.heading, step))
+			graphic_maze = self.print_maze_consol(self.location, self.heading)
+			#print (graphic_maze)
+
+			self.location = self.calculate_node(self.location, self.heading, step)
+			self.heading = self.calculate_heading(self.heading, rotation)
+
+			self.nodes_visited.append(self.location)
+
+			return rotation, movement
+		
 		# Navigate to the location of the maze with least knowledge.
 		target = self.closest_least_certain_node()
 		# If the goal has been found, but not yet visited, go there instead.
@@ -131,8 +131,19 @@ class Robot(object):
 		else:
 			self.second_step_instructions = None
 			
-		rotation = steps[0]
-		return rotation
+		rotation, movevement = steps[0]
+		step = steps[0]
+		
+		print ('sensors info={} \ncurrent_robot_location = {} \nheading={} \n(rotation,movement)={}\n'.format(self.latest_sensor_reading,self.location, self.heading, step))
+		graphic_maze = self.print_maze_consol(self.location, self.heading)
+		#print (graphic_maze)
+
+		self.location = self.calculate_node(self.location, self.heading, step)
+		self.heading = self.calculate_heading(self.heading, rotation)
+
+		self.nodes_visited.append(self.location)
+		
+		return step
 
 	def is_loop(self):
 		'''
@@ -169,10 +180,7 @@ class Robot(object):
 		if len(peak_locations) > 1:
 			loc = self.location
 			for k in range(len(peak_locations)):
-				dist_a = self.distance_between_nodes(loc, closest_peak)
-				dist_b = self.distance_between_nodes(loc, peak_locations[k])
-				if dist_a > dist_b:
-					closest_peak = peak_locations[k]
+				closest_peak = peak_locations[k]
 		return closest_peak
 
 	def build_graph_from_maze(self, fastest_route = False, treat_unknown_as_walls = False):
@@ -218,10 +226,7 @@ class Robot(object):
 
 	def move_is_valid(self, location, target, treat_unknown_as_walls = False):
 		'''
-		Will moving from location to target, given the current knowledge of the
-		maze, result in hitting a wall?
-		- If treat_unknown_as_walls, an attempt to move from location to target
-			through a wall / openning of unknown state is considered invalid.
+		 verify whether a movement is possible from a given location to a given target
 		'''
 		valid_move = True
 		x, y = location
@@ -283,43 +288,29 @@ class Robot(object):
 				path_costs[node] = largest_possible_cost
 			path_costs[start] = 0
 
-			# Set the initial node as current. Mark all other nodes unvisited.
-			# Create a set of all the unvisited nodes called the unvisited set.
 			current_node = start
 			unvisited_list = copy.copy(graph.keys())
 
 			while len(unvisited_list) > 0:
-				# For the current node, consider all of its neighbours and
-				# calculate their tentative distances. Compare the newly
-				# calculated tentative distance to the current assigned value
-				# and assign the smaller one otherwise, keep the current value.
 
 				distance = path_costs[current_node] + 1
 				for neighbour in graph[current_node]:
 					if path_costs[neighbour] > distance:
 						path_costs[neighbour] = distance
 
-				# When we are done considering all of the neighbors of the current
-				# node, mark the current node as visited and remove it from the
-				# unvisited set. A visited node will never be checked again.
-
 				unvisited_list.remove(current_node)
 
 				if len(unvisited_list) > 0:
-					# Select the unvisited node that is marked with the
-					# smallest tentative distance, set it as the new
-					# "current node", and go back to the beginning of the loop.
 					current_node = sorted(unvisited_list, key=cost_for_node)[0]
 
 			if print_path_costs:
-				print ('Path costs for each maze_first_explored space within the maze:')
+				print ('Path costs for each explore_the_mazed space within the maze:')
 				graphic_maze = self.print_maze_consol((0,0), 'up', path_costs)
 				print (graphic_maze)
 
 			optimal_path.append(target)
 			current_node = target
-			# Construct the optimal path by following the gradient of path costs
-			# from the goal to the start.
+			
 			while start not in optimal_path:
 				current_node = sorted(graph[current_node], key=cost_for_node)[0]
 				optimal_path = [current_node] + optimal_path
@@ -445,7 +436,7 @@ class Robot(object):
 
 	def print_maze_with_path_costs(self):
 		'''
-		Print the maze_first_explored map including the path costs for each maze_first_explored cell.
+		Print the explore_the_mazed map including the path costs for each explore_the_mazed cell.
 		'''
 		if not self.goal_found():
 			print ("Can not print maze with path costs. The goal has not been found.")
@@ -863,6 +854,6 @@ class Robot(object):
 			print ("Best number of steps: {}\nbest path{}".format(len(self.optimal_steps),self.optimal_path))
 			return 'Reset', 'Reset'
 		
-		return self.maze_first_explore()
+		return self.explore_the_maze()
 		
 		#return rotation, movement
