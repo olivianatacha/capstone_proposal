@@ -829,6 +829,6 @@ class Robot(object):
 			print ("Best number of steps: {}\nbest path{}".format(len(self.optimal_steps),self.optimal_path))
 			return 'Reset', 'Reset'
 		
-		return self.explore_the_maze()
+		rotation, movement = self.explore_the_maze()
 		
-		#return rotation, movement
+		return rotation, movement
