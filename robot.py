@@ -48,12 +48,10 @@ class Robot(object):
 
 		self.walls = self.initial_walls(maze_dim)
 		self.cell_possibilities = self.initial_cell_possibilities(maze_dim)
-
-		dim = maze_dim
-		self.goal_wall_coords = [(dim + 1, dim / 2 + 1), (dim + 2, dim / 2),
-								 (dim + 2, dim / 2 - 1), (dim + 1, dim / 2 - 1),
-								 (dim - 1, dim / 2 - 1), (dim - 2, dim / 2 - 1),
-								 (dim - 2, dim / 2), (dim - 1, dim / 2 + 1)]
+		self.goal_wall_coords = [(maze_dim + 1, maze_dim / 2 + 1), (maze_dim + 2, maze_dim / 2),
+								 (maze_dim + 2, maze_dim / 2 - 1), (maze_dim + 1, maze_dim / 2 - 1),
+								 (maze_dim - 1, maze_dim / 2 - 1), (maze_dim - 2, maze_dim / 2 - 1),
+								 (maze_dim - 2, maze_dim / 2), (maze_dim - 1, maze_dim / 2 + 1)]
 
 	def explore_the_maze(self):
 		'''
@@ -112,13 +110,13 @@ class Robot(object):
 			return rotation, movement
 		
 		# Navigate to the location of the maze with least knowledge.
-		target = self.closest_least_certain_node()
+		target = self.node_greatest_number_pos_shape()
 		# If the goal has been found, but not yet visited, go there instead.
-		if not self.goal_visited and self.goal_found():
+		if not self.goal_visited and self.is_goal_reached():
 			target = self.goal_location
 		maze_graph = self.build_graph_from_maze()
 		path = self.Dijkstra_best_path(maze_graph, loc, target)
-		steps = self.convert_path_to_steps(path, heading)
+		steps = self.path_to_movement_rotation(path, heading)
 
 		repeat_length = self.is_loop()
 		if repeat_length > 0:
@@ -164,7 +162,7 @@ class Robot(object):
 		return repeat_length
 
 
-	def closest_least_certain_node(self):
+	def node_greatest_number_pos_shape(self):
 		'''
 		Find the node with the greatest uncertainty (greatest number of
 		possible shapes) that is closest to the current location.
@@ -186,6 +184,8 @@ class Robot(object):
 	def build_graph_from_maze(self, fastest_route = False, treat_unknown_as_walls = False):
 		'''
 			Creates an undirected graph from the maze.
+			the graph is an adjacency list. locations are keys and values 
+			for each location are all paths from there to another
 		'''
 		graph = {}
 		open_list = set([self.initial_location])
@@ -221,6 +221,7 @@ class Robot(object):
 					else:
 						break
 
+		"""return the graph"""
 		return graph
 			
 
@@ -264,6 +265,38 @@ class Robot(object):
 						break
 
 		return valid_move
+
+	def change_steps_into_max_3_steps(self, start, path):
+		'''
+		This function ensures that no movement of the 
+		robot exceeds 3 squares.
+		'''
+		x, y = start
+		deltas = []
+		for node_x, node_y in path:
+			if y == node_y:
+				step = node_x - x
+				while step > 3 or step < -3:
+					if step > 0:
+						deltas.append((3,0))
+						step -= 3
+					else:
+						deltas.append((-3,0))
+						step += 3
+				deltas.append((step,0))
+			else:
+				step = node_y - y
+				while step > 3 or step < -3:
+					if step > 0:
+						deltas.append((0,3))
+						step -= 3
+					else:
+						deltas.append((0,-3))
+						step += 3
+				deltas.append((0,step))
+
+			x, y = node_x, node_y
+		return deltas
 	
 	def Dijkstra_best_path(self, graph, start, target, print_path_costs = False):
 		'''
@@ -304,7 +337,7 @@ class Robot(object):
 					current_node = sorted(unvisited_list, key=cost_for_node)[0]
 
 			if print_path_costs:
-				print ('Path costs for each explore_the_mazed space within the maze:')
+				print ('Path costs for each explored space within the maze:')
 				graphic_maze = self.print_maze_consol((0,0), 'up', path_costs)
 				print (graphic_maze)
 
@@ -317,7 +350,7 @@ class Robot(object):
 		
 		return optimal_path
 
-	def convert_path_to_steps(self, path, initial_heading):
+	def path_to_movement_rotation(self, path, initial_heading):
 		'''
 		Convert the given path to a list of step instructions
 		(rotation, movement) given the initial heading.
@@ -327,7 +360,7 @@ class Robot(object):
 			start = path.pop(0)
 			heading = initial_heading
 			steps = []
-			deltas = self.convert_path_to_deltas_max_3(start, path)
+			deltas = self.change_steps_into_max_3_steps(start, path)
 			for delta_x, delta_y in deltas:
 				up    = heading  == 'up'
 				right = heading  == 'right'
@@ -366,45 +399,12 @@ class Robot(object):
 
 		return steps
 
-	def convert_path_to_deltas_max_3(self, start, path):
-		'''
-		Break down the path to the x/y difference between each node in the
-		path with a maximum chnage of 3. This will ensure that maximum movement
-		made by the Robot while navigating path is not exceeded.
-		'''
-		x, y = start
-		deltas = []
-		for node_x, node_y in path:
-			if y == node_y:
-				step = node_x - x
-				while step > 3 or step < -3:
-					if step > 0:
-						deltas.append((3,0))
-						step -= 3
-					else:
-						deltas.append((-3,0))
-						step += 3
-				deltas.append((step,0))
-			else:
-				step = node_y - y
-				while step > 3 or step < -3:
-					if step > 0:
-						deltas.append((0,3))
-						step -= 3
-					else:
-						deltas.append((0,-3))
-						step += 3
-				deltas.append((0,step))
-
-			x, y = node_x, node_y
-		return deltas
-
 	def found_optimal_path(self):
 		'''
 		Determine whether the optimal path through the maze has been found.
 		If this is the first time the optimal path has been found, save it.
 		'''
-		if not self.goal_found():
+		if not self.is_goal_reached():
 			return False
 		goal_location = self.goal_location
 
@@ -431,25 +431,11 @@ class Robot(object):
 
 		if optimal_path_found:
 			self.optimal_path = shortest_known_path
-			self.optimal_steps = self.convert_path_to_steps(self.optimal_path, 'up')
+			self.optimal_steps = self.path_to_movement_rotation(self.optimal_path, 'up')
 		return optimal_path_found
 
-	def print_maze_with_path_costs(self):
-		'''
-		Print the explore_the_mazed map including the path costs for each explore_the_mazed cell.
-		'''
-		if not self.goal_found():
-			print ("Can not print maze with path costs. The goal has not been found.")
-			return False
-		known_maze_graph = self.build_graph_from_maze(True, True)
-		
-		new_graph = self.sort_graph(known_maze_graph)
-		#f = open('graph2.txt', 'a')
-		#print (f, new_graph)
-		self.Dijkstra_best_path(known_maze_graph, self.initial_location,
-												self.goal_location, True)
 
-	def distance_between_nodes(self, a, b):
+	def node_gap(self, a, b):
 		''' Return the distance between the two given nodes. '''
 		xa, ya = a
 		xb, yb = b
@@ -508,7 +494,7 @@ class Robot(object):
 		cw    = rotation == 90
 		return up, right, down, left, ccw, fwd, cw
 		
-	def goal_found(self):
+	def is_goal_reached(self):
 		''' Has the goal been found? '''
 		return self.goal_location != None
 
@@ -519,16 +505,6 @@ class Robot(object):
 		-1 = unknown
 		0  = no wall
 		1  = wall
-
-		NB: The nature of storing both horizontal and vertical walls in the same
-		two-dimensional list results in slightly unconventional indexing. For
-		a given maze_dim, there will be 2 * maze_dim + 1 sets of walls: the
-		vertical left exterior walls, maze_dim sets of horizontal walls
-		(interior and exterior), maze_dim - 1 sets of interior vertical walls,
-		and the right vertical extreior walls. This also results in the
-		following additional quirk: lists representing vertical walls will
-		have length maze_dim while lists representing horizontal walls will
-		have length maze_dim + 1 (because of the exterior walls top and bottom).
 		'''
 		walls = [[-1] * maze_dim]
 		for i in range(maze_dim):
@@ -848,7 +824,6 @@ class Robot(object):
 
 		if self.goal_visited and self.found_optimal_path():
 			self.racing = True
-			#self.print_maze_with_path_costs()
 			#self.draw_best_path(self.optimal_path)
 			#self.draw_solution_path(self.optimal_path)
 			print ("Best number of steps: {}\nbest path{}".format(len(self.optimal_steps),self.optimal_path))
